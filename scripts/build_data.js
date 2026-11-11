@@ -187,8 +187,7 @@ function classify(desc, fonte, cat = '', tipoC = '', cats = []) {
 
   let classe;
   if (tipo === 'nova') classe = social === 'declaratorio' ? 'nova_declaratorio' : social === 'his' ? 'nova_his' : 'nova_' + usoSub(cats);
-  else if (tipo === 'modificativo') classe = social === 'his' ? 'modificativo_his' : 'modificativo_mercado';
-  else if (tipo === 'reforma') classe = social === 'his' ? 'reforma_his' : 'reforma_mercado';
+  else if (tipo === 'modificativo' || tipo === 'reforma') classe = `${tipo}_${social === 'his' ? 'his' : usoSub(cats)}`;
   else classe = tipo;
 
   return { tipo, social, etapa, ato, classe };

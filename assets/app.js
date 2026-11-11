@@ -2,43 +2,45 @@
 'use strict';
 (() => {
   /* ============================================================ config */
-  // Paletas conferidas com o validador (todos os pares).
-  // Edificação nova (círculos): HIS + categorias de uso — daltonismo ΔE ≥ 8,3; visão normal ΔE ≥ 16,1.
-  // Modificativo e reforma: daltonismo ΔE ≥ 8,7; visão normal ΔE ≥ 17,6.
+  // Paleta conferida com o validador (todos os pares): daltonismo ΔE ≥ 8,3; visão normal ΔE ≥ 16,1.
+  // Cor = HIS/HMP ou categoria de uso (igual nos três tipos de obra) · Forma = tipo de alvará.
   const COLORS = {
     his: '#eb6834', decl: '#1baf7a',
     r1: '#86b6ef', r2h: '#00695c', r2v: '#1565c0', rant: '#9575cd', nr: '#b71c1c', sem: '#7f8ea0',
-    mod_mercado: '#c08ad8', mod_his: '#8e3a9e', ref_mercado: '#cfae00', ref_his: '#8a4b12',
     demol: '#2b2a27', regul: '#5f5e5a', cert: '#8a8984', outro: '#a9a8a3',
   };
-  // Forma = tipo de alvará · Cor = categoria de uso (edificação nova) ou HIS/HMP × exceto (modificativo, reforma)
+  // subclasses de uso (edificação nova, projeto modificativo e reforma)
+  const USO_SUB = [
+    { sub: 'his', label: 'HIS/HMP', color: 'his', social: 'his' },
+    { sub: 'r1', code: 'R1', label: 'Residência unifamiliar (casa)', color: 'r1', social: 'mercado' },
+    { sub: 'r2h', code: 'R2h', label: 'Conjunto residencial horizontal', color: 'r2h', social: 'mercado' },
+    { sub: 'r2v', code: 'R2v', label: 'Conjunto residencial vertical (prédio)', color: 'r2v', social: 'mercado' },
+    { sub: 'rant', code: 'R2/R3', label: 'Residencial multifamiliar (lei antiga)', color: 'rant', social: 'mercado' },
+    { sub: 'misto', code: 'R + NR', label: 'Uso misto', color: 'r2v', colors: ['r2v', 'nr'], split: true, social: 'mercado' },
+    { sub: 'nr', code: 'NR', label: 'Não residencial (comércio, serviços, indústria)', color: 'nr', social: 'mercado' },
+    { sub: 'sem', label: 'Uso não informado (Aprova Digital)', color: 'sem', social: 'mercado' },
+    { sub: 'declaratorio', label: 'Processo declaratório', color: 'decl', social: 'decl', only: 'nova' },
+  ];
+  const OBRAS = [['nova', 'Edificação nova', 'circle'], ['modificativo', 'Projeto modificativo', 'diamond'], ['reforma', 'Reforma', 'square']];
   const CLASSES = [
-    { key: 'nova_his', group: 'Edificação nova', label: 'HIS/HMP', color: 'his', shape: 'circle', social: 'his' },
-    { key: 'nova_r1', group: 'Edificação nova', code: 'R1', label: 'Residência unifamiliar (casa)', color: 'r1', shape: 'circle', social: 'mercado' },
-    { key: 'nova_r2h', group: 'Edificação nova', code: 'R2h', label: 'Conjunto residencial horizontal', color: 'r2h', shape: 'circle', social: 'mercado' },
-    { key: 'nova_r2v', group: 'Edificação nova', code: 'R2v', label: 'Conjunto residencial vertical (prédio)', color: 'r2v', shape: 'circle', social: 'mercado' },
-    { key: 'nova_rant', group: 'Edificação nova', code: 'R2/R3', label: 'Residencial multifamiliar (lei antiga)', color: 'rant', shape: 'circle', social: 'mercado' },
-    { key: 'nova_misto', group: 'Edificação nova', code: 'R + NR', label: 'Uso misto', colors: ['r2v', 'nr'], color: 'r2v', shape: 'split', social: 'mercado' },
-    { key: 'nova_nr', group: 'Edificação nova', code: 'NR', label: 'Não residencial (comércio, serviços, indústria)', color: 'nr', shape: 'circle', social: 'mercado' },
-    { key: 'nova_sem', group: 'Edificação nova', label: 'Uso não informado (Aprova Digital)', color: 'sem', shape: 'circle', social: 'mercado' },
-    { key: 'nova_declaratorio', group: 'Edificação nova', label: 'Processo declaratório', color: 'decl', shape: 'circle' },
-    { key: 'modificativo_mercado', group: 'Projeto modificativo', label: 'Exceto HIS/HMP', color: 'mod_mercado', shape: 'diamond', social: 'mercado' },
-    { key: 'modificativo_his', group: 'Projeto modificativo', label: 'HIS/HMP', color: 'mod_his', shape: 'diamond', social: 'his' },
-    { key: 'reforma_mercado', group: 'Reforma', label: 'Exceto HIS/HMP', color: 'ref_mercado', shape: 'square', social: 'mercado' },
-    { key: 'reforma_his', group: 'Reforma', label: 'HIS/HMP', color: 'ref_his', shape: 'square', social: 'his' },
-    { key: 'demolicao', group: 'Demolição', label: 'Demolição', color: 'demol', shape: 'triangle' },
-    { key: 'regularizacao', group: 'Regularização', label: 'Auto ou certificado de regularização', color: 'regul', shape: 'cross' },
-    { key: 'parcelamento', group: 'Parcelamento do solo', label: 'Desdobro, desmembramento, loteamento', color: 'regul', shape: 'tri_down' },
-    { key: 'certificado', group: 'Outros', label: 'Certificado de conclusão', color: 'cert', shape: 'ring' },
-    { key: 'outro', group: 'Outros', label: 'Funcionamento, equipamentos e outros', color: 'outro', shape: 'dot' },
+    ...OBRAS.flatMap(([tipo, group, shape]) => USO_SUB.filter((u) => !u.only || u.only === tipo).map((u) => ({
+      key: `${tipo}_${u.sub}`, group, tipo, sub: u.sub, code: u.code, label: u.label,
+      color: u.color, colors: u.colors, split: u.split, shape, social: u.social,
+    }))),
+    { key: 'demolicao', group: 'Demolição', tipo: 'demolicao', label: 'Demolição', color: 'demol', shape: 'triangle' },
+    { key: 'regularizacao', group: 'Regularização', tipo: 'regularizacao', label: 'Auto ou certificado de regularização', color: 'regul', shape: 'cross' },
+    { key: 'parcelamento', group: 'Parcelamento do solo', tipo: 'parcelamento', label: 'Desdobro, desmembramento, loteamento', color: 'regul', shape: 'tri_down' },
+    { key: 'certificado', group: 'Outros', tipo: 'outros', label: 'Certificado de conclusão', color: 'cert', shape: 'ring' },
+    { key: 'outro', group: 'Outros', tipo: 'outros', label: 'Funcionamento, equipamentos e outros', color: 'outro', shape: 'dot' },
   ];
   const CLS = Object.fromEntries(CLASSES.map((c) => [c.key, c]));
-  // ordem de desenho: atos "cinzas" embaixo, edificação nova no meio, os demais tipos por cima
+  // ordem de desenho: atos "cinzas" embaixo; depois nova, modificativo, reforma, demolição;
+  // dentro de cada tipo de obra, as subclasses mais raras por cima
   const BOTTOM = ['outro', 'certificado', 'parcelamento', 'regularizacao'];
-  // dentro de edificação nova, os mais raros por cima
-  const NOVA_ORDER = ['nova_sem', 'nova_rant', 'nova_nr', 'nova_r2v', 'nova_his', 'nova_misto', 'nova_r2h', 'nova_declaratorio', 'nova_r1'];
-  const DRAW_ORDER = Object.fromEntries(CLASSES.map((c, i) => [c.key,
-    BOTTOM.includes(c.key) ? BOTTOM.indexOf(c.key) : NOVA_ORDER.includes(c.key) ? 10 + NOVA_ORDER.indexOf(c.key) : 30 + i]));
+  const SUB_ORDER = ['sem', 'rant', 'nr', 'r2v', 'his', 'misto', 'r2h', 'declaratorio', 'r1'];
+  const OBRA_BASE = { nova: 10, modificativo: 30, reforma: 50 };
+  const DRAW_ORDER = Object.fromEntries(CLASSES.map((c) => [c.key,
+    BOTTOM.includes(c.key) ? BOTTOM.indexOf(c.key) : c.tipo in OBRA_BASE ? OBRA_BASE[c.tipo] + SUB_ORDER.indexOf(c.sub) : 90]));
   const clsText = (c) => (c.code ? `${c.code} — ${c.label}` : c.label);
   const ETAPAS = [['aprovacao', 'Aprovação'], ['execucao', 'Execução'], ['aprovacao_execucao', 'Aprovação e execução']];
   const ETAPA_LBL = Object.fromEntries(ETAPAS);
@@ -169,13 +171,14 @@
     else ctx.arc(x, y, r, 0, Math.PI * 2);
   }
   function drawSym(ctx, c, x, y, r, ring) {
-    if (c.shape === 'split') { // uso misto: metade residencial, metade não residencial
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.lineWidth = ring * 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r, Math.PI / 2, Math.PI * 1.5); ctx.closePath();
-      ctx.fillStyle = COLORS[c.colors[0]]; ctx.fill();
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r, -Math.PI / 2, Math.PI / 2); ctx.closePath();
-      ctx.fillStyle = COLORS[c.colors[1]]; ctx.fill();
+    if (c.split) { // uso misto: metade residencial (esq.), metade não residencial (dir.), na forma do tipo
+      pathSym(ctx, c.shape, x, y, r);
+      ctx.lineJoin = 'round'; ctx.lineWidth = ring * 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+      const e = r * 1.6;
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = COLORS[c.colors[0]]; ctx.fillRect(x - e, y - e, e, 2 * e);
+      ctx.fillStyle = COLORS[c.colors[1]]; ctx.fillRect(x, y - e, e, 2 * e);
+      ctx.restore();
       return;
     }
     pathSym(ctx, c.shape, x, y, r);
@@ -668,7 +671,7 @@
     $('metodo').innerHTML = `
       <p><b>Fontes (${esc(periodo(a))}).</b> ${esc(fontes.join('; '))}.${miss.length ? ` <b>Não há planilha ${miss.map((k) => (k === 'AD' ? 'do Aprova Digital' : 'SEHAB/SMUL')).join(' nem ')} para este ano</b>, o que reduz o total.` : ''}</p>
       <p>Cada símbolo é um alvará (documento), não um empreendimento: o mesmo prédio pode ter alvará de aprovação, depois de execução, apostilamentos e reconsiderações. Use os filtros de etapa e ato para não contar duas vezes.</p>
-      <p><b>Classificação.</b> Pela descrição do alvará: a forma indica o tipo; a cor separa HIS/HMP de exceto HIS/HMP dentro de cada tipo. Nos processos SEHAB/SMUL, HIS/HMP vem também da categoria de uso (HIS, HMP, EHIS, EHMP, EZEIS) ou do tipo de construção “habitação de interesse social”. No Aprova Digital, “exceto HIS/HMP” não separa residencial de comercial.</p>
+      <p><b>Classificação.</b> Pela descrição do alvará: a forma indica o tipo; nas obras (edificação nova, modificativo, reforma) a cor indica HIS/HMP ou a categoria de uso — R1, R2h, R2v, R2/R3, uso misto (R + NR), não residencial (NR) ou uso não informado (Aprova Digital). Nos processos SEHAB/SMUL, HIS/HMP vem também da categoria de uso (HIS, HMP, EHIS, EHMP, EZEIS) ou do tipo de construção “habitação de interesse social”. No Aprova Digital, “exceto HIS/HMP” não separa residencial de comercial.</p>
       <p><b>Localização.</b> Pelo SQL no GeoSampa: lote fiscal (${pct(a.por_lote)}%) ou, quando o lote não existe mais, centro da quadra fiscal (${pct(a.por_quadra)}%).${porEnd ? ` Sem SQL utilizável (planilhas de 2000–2001, área rural com código INCRA, SQL inválido), pelo endereço: mesmo número no cadastro de lotes (${pct(a.por_endereco)}%) ou número mais próximo na mesma rua (${pct(a.por_rua)}%).` : ''} Distrito por ponto-em-polígono.</p>
       <table><thead><tr><th>Tipo</th><th class="r">Planilha</th><th class="r">No mapa</th></tr></thead><tbody>${rows}</tbody></table>
       <p>${fmt(semLoc)} registros não foram localizados e ficam fora do mapa.</p>`;
@@ -788,56 +791,96 @@
       const counts = {};
       for (const f of vis) counts[f.c] = (counts[f.c] || 0) + 1;
       const pres = presentClasses().filter((cl) => S.on.has(cl.key));
-      const blocks = [];
-      for (const g of [...new Set(pres.map((cl) => cl.group))]) {
-        blocks.push({ g, items: pres.filter((cl) => cl.group === g) });
+      const fReg = `400 ${1.4 * pu}px ${FONT}`, fBold = `700 ${1.4 * pu}px ${FONT}`;
+      const lineH = 1.7 * pu;
+      // "código — descrição" com o código em negrito; quebra linha se não couber; devolve o nº de linhas
+      const drawLabel = (cl, x, yy, maxW) => {
+        ctx.font = fReg;
+        const lines = wrap(ctx, clsText(cl), maxW);
+        lines.forEach((l, li) => {
+          const ly = yy + li * lineH;
+          let xx = x;
+          ctx.fillStyle = '#0b0b0b'; ctx.textAlign = 'left';
+          if (li === 0 && cl.code && l.startsWith(cl.code)) {
+            ctx.font = fBold; ctx.fillText(cl.code, xx, ly); xx += ctx.measureText(cl.code + ' ').width;
+            ctx.font = fReg; ctx.fillText(l.slice(cl.code.length).trim(), xx, ly);
+          } else { ctx.font = fReg; ctx.fillText(l, xx, ly); }
+        });
+        return lines.length;
+      };
+      ctx.fillStyle = '#52514e'; ctx.font = `700 ${1.15 * pu}px ${FONT}`; ctx.textAlign = 'left';
+      ctx.fillText('TIPO DE ALVARÁ', P.x, y);
+      y += 1.2 * pu;
+
+      // 1) obras: tabela com uma linha por categoria e uma coluna por tipo (forma)
+      const obraCls = pres.filter((cl) => cl.tipo in OBRA_BASE);
+      if (obraCls.length) {
+        const tipos = OBRAS.filter(([t]) => obraCls.some((cl) => cl.tipo === t));
+        const subs = USO_SUB.filter((u) => obraCls.some((cl) => cl.sub === u.sub));
+        const cellW = 6.6 * pu, gap = 0.8 * pu;
+        const labW = P.w - tipos.length * cellW - gap;
+        const cellX = (i) => P.x + labW + gap + i * cellW;
+        const fHead = `700 ${0.98 * pu}px ${FONT}`;
+        ctx.font = fHead;
+        const headLines = tipos.map(([, nome]) => wrap(ctx, nome.toUpperCase(), cellW - 0.3 * pu));
+        const nHead = Math.max(...headLines.map((l) => l.length));
+        y += 1.0 * pu;
+        tipos.forEach(([, , shape], i) => {
+          drawSym(ctx, { shape, color: 'demol' }, cellX(i) + 0.7 * pu, y, 0.6 * pu, 0.05 * pu);
+          ctx.font = fHead; ctx.fillStyle = '#52514e'; ctx.textAlign = 'left';
+          headLines[i].forEach((l, li) => ctx.fillText(l, cellX(i), y + 2.0 * pu + li * 1.2 * pu));
+        });
+        y += 2.0 * pu + (nHead - 1) * 1.2 * pu + 0.7 * pu;
+        ctx.strokeStyle = '#c9c8c2'; ctx.lineWidth = 0.05 * pu;
+        ctx.beginPath(); ctx.moveTo(P.x, y); ctx.lineTo(P.x + P.w, y); ctx.stroke();
+        for (const u of subs) {
+          y += 2.1 * pu;
+          const n = drawLabel(u, P.x, y, labW - 0.4 * pu);
+          tipos.forEach(([t], i) => {
+            const cl = CLS[`${t}_${u.sub}`];
+            if (!cl || !pres.includes(cl)) return;
+            drawSym(ctx, cl, cellX(i) + 0.7 * pu, y - 0.5 * pu, 0.62 * pu, 0.06 * pu);
+            const nn = counts[cl.key] || 0;
+            ctx.font = fReg; ctx.textAlign = 'left'; ctx.fillStyle = nn ? '#0b0b0b' : '#8a8984';
+            ctx.fillText(fmt(nn), cellX(i) + 1.75 * pu, y);
+          });
+          y += (n - 1) * lineH + 0.35 * pu;
+        }
+        y += 1.4 * pu;
       }
+
+      // 2) demais tipos: grupos com símbolo, descrição e contagem
+      const blocks = [];
+      const rest = pres.filter((cl) => !(cl.tipo in OBRA_BASE));
+      for (const g of [...new Set(rest.map((cl) => cl.group))]) blocks.push({ g, items: rest.filter((cl) => cl.group === g) });
       const colW = P.cols === 2 ? (P.w - 3 * pu) / 2 : P.w;
-      const rowH = 2.5 * pu, grpH = 2.6 * pu, grpGap = 1.1 * pu, lineH = 1.8 * pu;
-      const fReg = `400 ${1.5 * pu}px ${FONT}`, fBold = `700 ${1.5 * pu}px ${FONT}`;
+      const rowH = 2.3 * pu, grpH = 2.4 * pu, grpGap = 0.9 * pu;
       ctx.font = fReg;
       const avail = colW - 2.6 * pu - ctx.measureText('00.000').width - 1.0 * pu;
-      const linesOf = (cl) => { ctx.font = fReg; return wrap(ctx, clsText(cl), avail); };
-      const blockH = (b) => grpH + b.items.reduce((s2, cl) => s2 + rowH + (linesOf(cl).length - 1) * lineH, 0) + grpGap;
+      const linesOf = (cl) => { ctx.font = fReg; return wrap(ctx, clsText(cl), avail).length; };
+      const blockH = (b) => grpH + b.items.reduce((s2, cl) => s2 + rowH + (linesOf(cl) - 1) * lineH, 0) + grpGap;
       let split = blocks.length;
-      if (P.cols === 2) {
+      if (P.cols === 2 && blocks.length > 1) {
         const total = blocks.reduce((s2, b) => s2 + blockH(b), 0);
         let acc = 0; split = 0;
         while (split < blocks.length && acc + blockH(blocks[split]) / 2 < total / 2) { acc += blockH(blocks[split]); split++; }
         split = Math.max(1, split);
       }
-      ctx.fillStyle = '#52514e'; ctx.font = `700 ${1.15 * pu}px ${FONT}`;
-      ctx.fillText('TIPO DE ALVARÁ', P.x, y);
-      ctx.textAlign = 'right'; ctx.fillText('Nº', P.x + colW, y);
-      if (P.cols === 2 && split < blocks.length) { ctx.textAlign = 'right'; ctx.fillText('Nº', P.x + P.w, y); }
-      ctx.textAlign = 'left';
-      y += 1.0 * pu;
       const yStart = y;
       let colX = P.x, yMax = y;
       blocks.forEach((b, i) => {
         if (P.cols === 2 && i === split) { colX = P.x + colW + 3 * pu; yMax = Math.max(yMax, y); y = yStart; }
         y += grpH * 0.85;
-        ctx.fillStyle = '#0b0b0b'; ctx.font = `700 ${1.6 * pu}px ${FONT}`; ctx.textAlign = 'left';
+        ctx.fillStyle = '#0b0b0b'; ctx.font = `700 ${1.5 * pu}px ${FONT}`; ctx.textAlign = 'left';
         ctx.fillText(b.g, colX, y);
-        y += 0.35 * pu;
+        y += 0.3 * pu;
         for (const cl of b.items) {
           y += rowH;
-          const cy = y - 0.55 * pu;
-          drawSym(ctx, cl, colX + 0.85 * pu, cy, 0.7 * pu, 0.06 * pu);
-          // código em negrito + descrição; quebra em mais linhas se não couber
-          const lines = linesOf(cl);
-          lines.forEach((l, li) => {
-            const ly = y + li * lineH;
-            let x = colX + 2.6 * pu;
-            ctx.fillStyle = '#0b0b0b'; ctx.textAlign = 'left';
-            if (li === 0 && cl.code && l.startsWith(cl.code)) {
-              ctx.font = fBold; ctx.fillText(cl.code, x, ly); x += ctx.measureText(cl.code + ' ').width;
-              ctx.font = fReg; ctx.fillText(l.slice(cl.code.length).trim(), x, ly);
-            } else { ctx.font = fReg; ctx.fillText(l, x, ly); }
-          });
+          drawSym(ctx, cl, colX + 0.85 * pu, y - 0.5 * pu, 0.66 * pu, 0.06 * pu);
+          const n = drawLabel(cl, colX + 2.6 * pu, y, avail);
           ctx.font = fReg; ctx.textAlign = 'right'; ctx.fillStyle = '#52514e';
           ctx.fillText(fmt(counts[cl.key] || 0), colX + colW, y);
-          y += (lines.length - 1) * lineH;
+          y += (n - 1) * lineH;
         }
         y += grpGap;
       });
@@ -851,7 +894,7 @@
       ctx.textAlign = 'left';
       y += 2.2 * pu;
       ctx.fillStyle = '#52514e'; ctx.font = `400 ${1.1 * pu}px ${FONT}`;
-      for (const l of wrap(ctx, 'Forma = tipo de alvará · cor = categoria de uso (edificação nova) ou HIS/HMP e exceto HIS/HMP (modificativo, reforma). Cada símbolo é um alvará (o mesmo prédio pode ter alvará de aprovação, de execução, apostilamentos e reconsiderações).', P.w)) { ctx.fillText(l, P.x, y); y += 1.55 * pu; }
+      for (const l of wrap(ctx, 'Forma = tipo de alvará · cor = HIS/HMP ou categoria de uso (a mesma nos três tipos de obra). Cada símbolo é um alvará (o mesmo prédio pode ter alvará de aprovação, de execução, apostilamentos e reconsiderações).', P.w)) { ctx.fillText(l, P.x, y); y += 1.55 * pu; }
 
       // fonte (ancorada embaixo)
       const nPrec = {};

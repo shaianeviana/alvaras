@@ -24,14 +24,12 @@ porque falta uma das fontes (o site avisa).
 
 ## Legenda
 
-A **forma** indica o tipo de alvará. Na **edificação nova**, a **cor** mostra HIS/HMP ou a categoria de uso;
-no projeto modificativo e na reforma, separa HIS/HMP de exceto HIS/HMP:
+A **forma** indica o tipo de alvará. Nas obras (edificação nova, projeto modificativo e reforma) a **cor** mostra
+HIS/HMP ou a categoria de uso, com as mesmas cores nos três tipos:
 
 | Forma | Tipo | Cores |
 |---|---|---|
-| ● círculo | Edificação nova | laranja = HIS/HMP · azul-claro = **R1** residência unifamiliar · verde-petróleo = **R2h** conjunto horizontal · azul = **R2v** conjunto vertical (prédio) · lavanda = **R2/R3** residencial multifamiliar (lei antiga) · metade azul/metade vermelho = **R + NR** uso misto · vermelho = **NR** não residencial · cinza-azulado = uso não informado (Aprova Digital) · verde-água = processo declaratório |
-| ◆ losango | Projeto modificativo | lilás = exceto HIS/HMP · roxo = HIS/HMP |
-| ■ quadrado | Reforma (inclui reconstrução) | mostarda = exceto HIS/HMP · marrom = HIS/HMP |
+| ● ◆ ■ | Edificação nova (círculo), projeto modificativo (losango), reforma (quadrado; inclui reconstrução) | laranja = HIS/HMP · azul-claro = **R1** residência unifamiliar · verde-petróleo = **R2h** conjunto horizontal · azul = **R2v** conjunto vertical (prédio) · lavanda = **R2/R3** residencial multifamiliar (lei antiga) · metade azul/metade vermelho = **R + NR** uso misto · vermelho = **NR** não residencial · cinza-azulado = uso não informado (Aprova Digital) · verde-água = processo declaratório (só edificação nova) |
 | ▲ triângulo | Demolição | preto |
 | ✚ cruz | Regularização (auto ou certificado de regularização, inclui Lei 13.558/2003) | cinza escuro |
 | ▼ triângulo invertido | Parcelamento do solo (desdobro, desmembramento, loteamento, diretrizes) | cinza escuro |
@@ -40,9 +38,10 @@ no projeto modificativo e na reforma, separa HIS/HMP de exceto HIS/HMP:
 
 Nos **processos SEHAB/SMUL**, HIS/HMP vem da descrição ou da **categoria de uso** (HIS, HMP, EHIS, EHMP, EZEIS)
 ou do tipo de construção “habitação de interesse social”. No **Aprova Digital** vem só da descrição, e
-como ele não informa a categoria de uso, a edificação nova exceto HIS/HMP fica como “uso não informado”.
+como ele não informa a categoria de uso, as obras exceto HIS/HMP ficam como “uso não informado”.
+No PNG, a legenda das obras é uma tabela: uma linha por categoria e uma coluna por tipo (forma).
 Quando um alvará tem categorias residenciais e não residenciais ao mesmo tempo, entra em **R + NR (uso misto)**.
-As cores da edificação nova foram conferidas para daltonismo e visão normal (todos os pares).
+As cores foram conferidas para daltonismo e visão normal (todos os pares).
 
 ### Categoria de uso
 
