@@ -1,0 +1,8 @@
+# planilhas originais: têm nomes de proprietários e responsáveis técnicos — ficam só no computador
+dados_brutos/
+cache/
+previas/
+scripts/node_modules/
+.DS_Store
+Thumbs.db
+~$*

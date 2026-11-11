@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alvarás em São Paulo</title>
+  <meta name="description" content="Mapa dos alvarás aprovados no município de São Paulo de 2000 a 2026 (processos aprovados SEHAB/SMUL e Aprova Digital), por ano e tipo, com exportação em PNG.">
+  <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="panel" id="panel" aria-label="Filtros e exportação">
+    <header class="brand">
+      <h1>Alvarás em São Paulo</h1>
+      <p id="sub">Processos aprovados SEHAB/SMUL e Aprova Digital · município inteiro</p>
+    </header>
+
+    <section class="block">
+      <h2>Ano</h2>
+      <div class="yearnav">
+        <button type="button" class="ynav" id="yPrev" aria-label="Ano anterior">‹</button>
+        <div class="ycur"><b id="yCur"></b><span id="yRot"></span></div>
+        <button type="button" class="ynav" id="yNext" aria-label="Próximo ano">›</button>
+      </div>
+      <div class="spark" id="years" role="radiogroup" aria-label="Ano (altura = alvarás no mapa com os filtros atuais)"></div>
+      <div class="spark-axis" id="yearsAxis" aria-hidden="true"></div>
+      <p class="hint" id="periodo"></p>
+    </section>
+
+    <section class="block">
+      <h2>Recorte</h2>
+      <select id="distrito" aria-label="Distrito">
+        <option value="">Município inteiro</option>
+      </select>
+    </section>
+
+    <section class="block">
+      <div class="h2row">
+        <h2>Tipos de alvará</h2>
+        <span class="total" id="total"></span>
+      </div>
+      <div id="legend" class="legend"></div>
+      <div class="mini-actions">
+        <button type="button" class="link" data-preset="all">Todos</button>
+        <button type="button" class="link" data-preset="obras">Só obras</button>
+        <button type="button" class="link" data-preset="nova">Só edificação nova</button>
+        <button type="button" class="link" data-preset="his">Só HIS/HMP</button>
+        <button type="button" class="link" data-preset="mercado">Só exceto HIS/HMP</button>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Etapa</h2>
+      <div class="chips" id="etapas"></div>
+      <h2 class="sub">Ato</h2>
+      <div class="chips" id="atos"></div>
+      <h2 class="sub">Sistema</h2>
+      <div class="chips" id="fontes"></div>
+    </section>
+
+    <section class="block">
+      <h2>Fundo</h2>
+      <select id="basemap" aria-label="Mapa de fundo">
+        <option value="gray_labels">Cinza claro com nomes</option>
+        <option value="gray">Cinza claro sem nomes</option>
+        <option value="none">Sem fundo (só limites)</option>
+      </select>
+      <label class="check"><input type="checkbox" id="showDistritos" checked> Limites dos distritos</label>
+    </section>
+
+    <section class="block export">
+      <h2>Exportar mapa</h2>
+      <label class="field">Título
+        <input type="text" id="titulo" value="Alvarás emitidos — {periodo}">
+      </label>
+      <p class="hint">Use <code>{periodo}</code> para inserir o ano.</p>
+      <label class="field">Créditos (opcional)
+        <input type="text" id="creditos" placeholder="Elaboração: …">
+      </label>
+      <label class="field">Formato
+        <select id="pagina">
+          <option value="a4l">A4 paisagem · 300 dpi</option>
+          <option value="a4p">A4 retrato · 300 dpi</option>
+          <option value="wide">16:9 · 3840 × 2160</option>
+        </select>
+      </label>
+      <label class="field">Enquadramento
+        <select id="enquadramento">
+          <option value="fit">Recorte inteiro (município ou distrito)</option>
+          <option value="screen">Igual à tela</option>
+        </select>
+      </label>
+      <div class="serie">
+        <label class="field">Série de
+          <select id="serieDe"></select>
+        </label>
+        <label class="field">até
+          <select id="serieAte"></select>
+        </label>
+      </div>
+      <div class="btns">
+        <button type="button" class="btn primary" id="btnPng">Exportar PNG</button>
+        <button type="button" class="btn" id="btnSerie">Exportar série</button>
+      </div>
+      <p class="hint">A série baixa um PNG por ano, com o mesmo enquadramento e filtros. O navegador pode pedir para permitir vários downloads.</p>
+      <p class="status" id="exportStatus" role="status"></p>
+      <div class="btns small">
+        <button type="button" class="btn ghost" id="btnCsv">Dados em CSV</button>
+        <button type="button" class="btn ghost" id="btnGeo">GeoJSON</button>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Distritos com mais alvarás</h2>
+      <p class="hint">Com os filtros atuais. Clique para ampliar.</p>
+      <ol class="rank" id="rank"></ol>
+    </section>
+
+    <details class="block metodo">
+      <summary>Como os dados foram montados</summary>
+      <div id="metodo"></div>
+    </details>
+
+    <footer class="autoria">
+      Criado por <strong>Shaiane Viana</strong><br>
+      FAUUSP · LABAUT
+    </footer>
+  </aside>
+
+  <main class="map-wrap">
+    <div id="map" aria-label="Mapa"></div>
+    <div id="tip" class="tip" hidden></div>
+    <div id="card" class="card" hidden></div>
+    <button type="button" class="panel-toggle" id="panelToggle" aria-controls="panel">Filtros</button>
+    <div class="loading" id="loading">Carregando dados…</div>
+  </main>
+</div>
+
+<script src="assets/vendor/leaflet/leaflet.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
