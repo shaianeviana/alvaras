@@ -60,6 +60,21 @@
     </section>
 
     <section class="block">
+      <div class="h2row">
+        <h2>Categoria de uso</h2>
+        <span class="total" id="catsTotal"></span>
+      </div>
+      <div id="cats" class="cats"></div>
+      <div class="mini-actions">
+        <button type="button" class="link" data-cpreset="all">Todas</button>
+        <button type="button" class="link" data-cpreset="res">Só residencial</button>
+        <button type="button" class="link" data-cpreset="nres">Só não residencial</button>
+        <button type="button" class="link" data-cpreset="his">Só HIS/HMP</button>
+      </div>
+      <p class="hint">Só as planilhas SEHAB/SMUL trazem a categoria; o Aprova Digital fica em “Sem categoria”. Um alvará com mais de uma categoria (uso misto) conta em cada uma.</p>
+    </section>
+
+    <section class="block">
       <h2>Fundo</h2>
       <select id="basemap" aria-label="Mapa de fundo">
         <option value="gray_labels">Cinza claro com nomes</option>

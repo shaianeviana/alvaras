@@ -180,6 +180,36 @@ function classify(desc, fonte, cat = '', tipoC = '') {
   return { tipo, social, etapa, ato, classe };
 }
 
+/* Categoria de uso → códigos padronizados (descrições ficam no site, assets/app.js).
+   "R2V-01; NR1-04 - NR2" → ["R2v", "NR1", "NR2"]. Subcategorias (S2.1, C2.3…) viram a categoria (S2, C2). */
+function catCodes(cat) {
+  const out = new Set();
+  for (const part of up(cat).split(/[;,]|\s-\s(?=[A-Z])/)) {
+    const t = part.replace(/\s+/g, '');
+    if (!t) continue;
+    let c, m;
+    if (/^EHIS/.test(t)) c = 'EHIS';
+    else if (/^EHMP/.test(t)) c = 'EHMP';
+    else if (/^EZEIS/.test(t)) c = 'EZEIS';
+    else if (/^H\.?I\.?S/.test(t)) c = 'HIS';
+    else if (/^H\.?M\.?P/.test(t)) c = 'HMP';
+    else if (/^R2V/.test(t)) c = 'R2v';
+    else if (/^R2H/.test(t)) c = 'R2h';
+    else if (/^R1(\D|$|\d\d)/.test(t)) c = 'R1';
+    else if (/^R2/.test(t)) c = 'R2';
+    else if (/^R3/.test(t)) c = 'R3';
+    else if (/^R\.?$/.test(t)) c = 'R';
+    else if ((m = t.match(/^NR([1-5])/))) c = 'NR' + m[1];
+    else if (/^NR\.?$/.test(t)) c = 'NR';
+    else if (/^INFRA/.test(t)) c = 'INFRA';
+    else if (/^IND/.test(t)) c = 'IND';
+    else if ((m = t.match(/^([CSIE])([1-4])?(?![A-Z])/))) c = m[1] + (m[2] || '');
+    else c = 'OUTRA';
+    out.add(c);
+  }
+  return [...out];
+}
+
 /* Uso pela categoria (só processos SEHAB/SMUL): residencial, não residencial, misto. */
 function usoFromCat(cat, tipoC) {
   let r = false, nr = false;
@@ -706,6 +736,7 @@ const listXls = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) =>
       inc(r.sqls.length ? 'com SQL' : r.incra ? 'INCRA' : 'sem SQL');
       if (!r.sqls.length && r.fonte === 'PA') inc(parseEndereco(r.endereco) ? 'sem SQL, endereço ok' : 'sem SQL, endereço ruim');
       if (r.fonte === 'PA') inc('uso ' + (usoFromCat(r.categoria, r.tipo_construcao) || '-'));
+      if (r.fonte === 'PA') for (const c of catCodes(r.categoria)) inc('cat ' + c);
       if (!r.data) inc('sem data');
       else if (!r.data.startsWith(String(r.ano))) inc('data fora do ano');
     }
@@ -813,7 +844,8 @@ const listXls = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) =>
       fst[r.fonte].mapeados++;
       st.classes[cls.classe] = (st.classes[cls.classe] || 0) + 1;
       st.atos[cls.ato] = (st.atos[cls.ato] || 0) + 1;
-      const ck = `${cls.classe}|${cls.ato}|${cls.etapa}|${r.fonte}`;
+      const cats = r.fonte === 'PA' ? catCodes(r.categoria).sort() : [];
+      const ck = `${cls.classe}|${cls.ato}|${cls.etapa}|${r.fonte}|${cats.join('+')}`;
       st.cubo[ck] = (st.cubo[ck] || 0) + 1;
 
       const p = {
@@ -833,7 +865,8 @@ const listXls = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) =>
         endereco: r.fonte === 'PA' && r.endereco ? cleanEndereco(r.endereco) : h0 ? h0.end : '',
         uso_iptu: h0 ? h0.uso : '',
         categoria: r.categoria,
-        uso: r.fonte === 'PA' ? usoFromCat(r.categoria, r.tipo_construcao) : '',
+        cats: cats.length ? cats : null,
+        uso:r.fonte === 'PA' ? usoFromCat(r.categoria, r.tipo_construcao) : '',
         area: r.area,
         bpu: r.bpu,
         distrito: d ? d.nome : '',

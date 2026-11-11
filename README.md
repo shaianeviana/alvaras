@@ -41,6 +41,32 @@ Nos **processos SEHAB/SMUL**, HIS/HMP vem da descrição ou da **categoria de us
 ou do tipo de construção “habitação de interesse social”. No **Aprova Digital** vem só da descrição, e
 “exceto HIS/HMP” **não** separa residencial de comercial (o Aprova Digital não informa o uso).
 
+### Categoria de uso
+
+As planilhas SEHAB/SMUL trazem a **categoria de uso** do projeto; o site mostra o código e a descrição e permite
+filtrar por ela. O Aprova Digital não informa a categoria (fica em “Sem categoria”). Subcategorias viram a
+categoria principal (S2.1 → S2, NR1-04 → NR1). Um alvará com mais de uma categoria (uso misto) entra em cada uma.
+
+| Código | Descrição |
+|---|---|
+| R1 | Residência unifamiliar (casa) |
+| R2h | Conjunto residencial horizontal (vila, condomínio de casas) |
+| R2v | Conjunto residencial vertical (prédio) |
+| R2 / R3 | Residência multifamiliar / conjunto residencial (lei antiga) |
+| HIS / HMP | Habitação de Interesse Social / de Mercado Popular |
+| EHIS / EHMP / EZEIS | Empreendimento de HIS / de HMP / em ZEIS |
+| NR1 | Não residencial compatível (comércio e serviços de bairro) |
+| NR2 | Não residencial tolerável |
+| NR3 | Não residencial especial ou incômodo |
+| NR4 / NR5 | Não residencial, subcategorias nR4 / nR5 |
+| IND / INFRA | Industrial / infraestrutura |
+| C1 / C2 / C3 | Comércio varejista local / varejista diversificado / atacadista (lei antiga) |
+| S1 / S2 / S3 | Serviços locais / diversificados / especiais (lei antiga) |
+| I1 / I2 / I3 | Indústria não incômoda / diversificada / especial (lei antiga) |
+| E1 / E2 / E3 / E4 | Instituições locais / diversificadas / especiais / usos especiais (lei antiga) |
+
+“Lei antiga” = Lei 8.001/1973 (zoneamento até 2004); os demais códigos são das Leis 13.885/2004 e 16.402/2016.
+
 **Ato**: “Emissão” é o alvará em si; “Reconsideração de despacho”, “Apostilamento” e “Revalidação/renovação”
 são atos sobre um alvará já existente. Para contar obras novas, deixe só “Emissão”.
 

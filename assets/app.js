@@ -33,6 +33,61 @@
   const ATO_LBL = Object.fromEntries(ATOS);
   const FONTES = [['PA', 'SEHAB/SMUL (processos aprovados)'], ['AD', 'Aprova Digital']];
   const FONTE_LBL = Object.fromEntries(FONTES);
+  // Categoria de uso (planilhas SEHAB/SMUL). Códigos padronizados no processamento (scripts/build_data.js).
+  // Lei atual = Leis 13.885/2004 e 16.402/2016; lei antiga = Lei 8.001/1973.
+  const CAT_GROUPS = [
+    { key: 'res', nome: 'Residencial', itens: [
+      ['R1', 'Residência unifamiliar (casa)'],
+      ['R2h', 'Conjunto residencial horizontal (vila, condomínio de casas)'],
+      ['R2v', 'Conjunto residencial vertical (prédio)'],
+      ['R2', 'Residência multifamiliar (lei antiga)'],
+      ['R3', 'Conjunto residencial (lei antiga)'],
+      ['R', 'Residencial, sem subcategoria'],
+    ] },
+    { key: 'his', nome: 'Interesse social e mercado popular', itens: [
+      ['HIS', 'Habitação de Interesse Social'],
+      ['HMP', 'Habitação de Mercado Popular'],
+      ['EHIS', 'Empreendimento de HIS'],
+      ['EHMP', 'Empreendimento de HMP'],
+      ['EZEIS', 'Empreendimento em ZEIS'],
+    ] },
+    { key: 'nr', nome: 'Não residencial', itens: [
+      ['NR1', 'Não residencial compatível (comércio e serviços de bairro)'],
+      ['NR2', 'Não residencial tolerável'],
+      ['NR3', 'Não residencial especial ou incômodo'],
+      ['NR4', 'Não residencial, subcategoria nR4'],
+      ['NR5', 'Não residencial, subcategoria nR5'],
+      ['NR', 'Não residencial, sem subcategoria'],
+      ['IND', 'Industrial (Ind-1a, Ind-1b, Ind-2, Ind-3)'],
+      ['INFRA', 'Infraestrutura'],
+    ] },
+    { key: 'antiga', nome: 'Comércio, serviços, indústria e instituições (lei antiga)', itens: [
+      ['C1', 'Comércio varejista de âmbito local'],
+      ['C2', 'Comércio varejista diversificado'],
+      ['C3', 'Comércio atacadista'],
+      ['C', 'Comércio, sem subcategoria'],
+      ['S1', 'Serviços de âmbito local'],
+      ['S2', 'Serviços diversificados'],
+      ['S3', 'Serviços especiais'],
+      ['S', 'Serviços, sem subcategoria'],
+      ['I1', 'Indústria não incômoda'],
+      ['I2', 'Indústria diversificada'],
+      ['I3', 'Indústria especial'],
+      ['I', 'Indústria, sem subcategoria'],
+      ['E1', 'Instituições de âmbito local'],
+      ['E2', 'Instituições diversificadas'],
+      ['E3', 'Instituições especiais'],
+      ['E4', 'Usos especiais'],
+      ['E', 'Institucional, sem subcategoria'],
+    ] },
+    { key: 'outros', nome: 'Outros', itens: [
+      ['OUTRA', 'Outra categoria'],
+      ['SEM', 'Sem categoria (Aprova Digital e campo vazio)'],
+    ] },
+  ];
+  const CAT_LBL = Object.fromEntries(CAT_GROUPS.flatMap((g) => g.itens));
+  const ALL_CATS = CAT_GROUPS.flatMap((g) => g.itens.map((i) => i[0]));
+  const featCats = (p) => (p.cats && p.cats.length ? p.cats : ['SEM']);
   const USO_LBL = { residencial: 'Residencial', nao_residencial: 'Não residencial', misto: 'Misto (residencial e não residencial)' };
   const PREC_LBL = {
     lote: 'Lote fiscal, pelo SQL (GeoSampa)',
@@ -58,6 +113,7 @@
     etapas: new Set(ETAPAS.map((e) => e[0])),
     atos: new Set(ATOS.map((e) => e[0])),
     fontes: new Set(FONTES.map((e) => e[0])),
+    cats: new Set(ALL_CATS),
     basemap: 'gray_labels', showDistritos: true,
     data: {}, distritos: null, municipio: null, distritoIndex: {},
   };
@@ -233,7 +289,8 @@
         ${row(pa ? 'Processo' : 'Processo AD', esc(p.processo))}
         ${row('Processo SEI', esc(p.sei))}
         ${row('SQL', esc((p.sqls || '').replace(/,/g, ', ')) || '—')}
-        ${row('Categoria de uso', esc(p.categoria))}
+        ${row('Categoria de uso', p.cats ? p.cats.map((k) => `<b>${esc(k === 'OUTRA' ? '—' : k)}</b> ${esc(CAT_LBL[k] || '')}`).join('<br>')
+          + (p.categoria ? `<br><small class="raw">na planilha: ${esc(p.categoria)}</small>` : '') : '')}
         ${row('Uso', esc(USO_LBL[p.uso] || ''))}
         ${row('Área construída', p.area ? fmt(p.area) + ' m²' : '')}
         ${row('Blocos/pav./unid.', esc(p.bpu))}
@@ -272,15 +329,19 @@
   const passAto = (f) => S.atos.has(f.p.ato || 'emissao');
   const passFonte = (f) => S.fontes.has(f.p.fonte || 'AD');
   const passDist = (f) => !S.distrito || f.p.distrito === S.distrito;
-  const isVisible = (f) => S.on.has(f.c) && passEtapa(f) && passAto(f) && passFonte(f) && passDist(f);
+  const allCatsOn = () => S.cats.size === ALL_CATS.length;
+  const catsPass = (codes) => allCatsOn() || codes.some((c) => S.cats.has(c));
+  const passCat = (f) => catsPass(featCats(f.p));
+  const isVisible = (f) => S.on.has(f.c) && passEtapa(f) && passAto(f) && passFonte(f) && passCat(f) && passDist(f);
 
   /* total do ano com os filtros atuais (sem o distrito), a partir do resumo do manifest */
   function yearCount(a) {
     if (!a.cubo) return Object.entries(a.classes || {}).reduce((s, [k, n]) => s + (S.on.has(k) ? n : 0), 0);
     let n = 0;
     for (const [key, v] of Object.entries(a.cubo)) {
-      const [c, ato, etapa, fonte] = key.split('|');
-      if (S.on.has(c) && S.atos.has(ato) && (!etapa || S.etapas.has(etapa)) && S.fontes.has(fonte)) n += v;
+      const [c, ato, etapa, fonte, cats] = key.split('|');
+      if (S.on.has(c) && S.atos.has(ato) && (!etapa || S.etapas.has(etapa)) && S.fontes.has(fonte)
+        && catsPass(cats ? cats.split('+') : ['SEM'])) n += v;
     }
     return n;
   }
@@ -387,6 +448,52 @@
     buildChips('atos', ATOS, S.atos);
     buildChips('fontes', FONTES, S.fontes);
   }
+
+  /* categorias de uso: grupos recolhíveis, cada linha com código, descrição e contagem */
+  function buildCats() {
+    const el = $('cats'); el.innerHTML = '';
+    for (const g of CAT_GROUPS) {
+      const det = document.createElement('details'); det.className = 'cgrp'; det.dataset.g = g.key;
+      const sum = document.createElement('summary');
+      const gcb = document.createElement('input'); gcb.type = 'checkbox'; gcb.dataset.g = g.key;
+      gcb.setAttribute('aria-label', 'Todas: ' + g.nome);
+      gcb.onchange = () => { g.itens.forEach(([k]) => (gcb.checked ? S.cats.add(k) : S.cats.delete(k))); refresh(); };
+      const nm = document.createElement('span'); nm.className = 'gn'; nm.textContent = g.nome;
+      const n = document.createElement('span'); n.className = 'n';
+      sum.append(gcb, nm, n);
+      det.appendChild(sum);
+      for (const [k, desc] of g.itens) {
+        const row = document.createElement('label'); row.className = 'crow'; row.dataset.k = k;
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.dataset.k = k;
+        cb.onchange = () => { cb.checked ? S.cats.add(k) : S.cats.delete(k); refresh(); };
+        const code = document.createElement('b'); code.textContent = k === 'SEM' || k === 'OUTRA' ? '—' : k;
+        const d = document.createElement('span'); d.textContent = desc;
+        const cn = document.createElement('span'); cn.className = 'n';
+        row.append(cb, code, d, cn);
+        det.appendChild(row);
+      }
+      el.appendChild(det);
+    }
+    const RES = ['R1', 'R2h', 'R2v', 'R2', 'R3', 'R'];
+    const NRES = CAT_GROUPS.filter((g) => g.key === 'nr' || g.key === 'antiga').flatMap((g) => g.itens.map((i) => i[0]));
+    const HISC = CAT_GROUPS.find((g) => g.key === 'his').itens.map((i) => i[0]);
+    document.querySelectorAll('[data-cpreset]').forEach((b) => {
+      b.onclick = () => {
+        const p = b.dataset.cpreset;
+        S.cats = new Set(p === 'all' ? ALL_CATS : p === 'res' ? RES : p === 'nres' ? NRES : HISC);
+        refresh();
+      };
+    });
+  }
+  /* texto curto do filtro de categoria (PNG) */
+  function catsResumo() {
+    if (allCatsOn()) return '';
+    const on = ALL_CATS.filter((k) => S.cats.has(k));
+    if (!on.length) return 'nenhuma';
+    const grupos = CAT_GROUPS.filter((g) => g.itens.every(([k]) => S.cats.has(k)));
+    const soltos = on.filter((k) => !grupos.some((g) => g.itens.some(([k2]) => k2 === k)));
+    return [...grupos.map((g) => g.nome.toLowerCase()), ...soltos.map((k) => (k === 'SEM' ? 'sem categoria' : k === 'OUTRA' ? 'outra' : k))].join(', ');
+  }
   function buildDistritos() {
     const sel = $('distrito');
     const names = S.distritos.features.map((f) => f.properties.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -462,16 +569,31 @@
     draw();
 
     // contagens: cada filtro conta respeitando os outros filtros (não ele mesmo)
-    const byClass = {}, byEtapa = {}, byAto = {}, byFonte = {};
+    const byClass = {}, byEtapa = {}, byAto = {}, byFonte = {}, byCat = {};
     const inc = (o, k) => (o[k] = (o[k] || 0) + 1);
     for (const f of feats) {
       if (!passDist(f)) continue;
-      const e = passEtapa(f), at = passAto(f), fo = passFonte(f), on = S.on.has(f.c);
-      if (e && at && fo) inc(byClass, f.c);
-      if (on && at && fo && f.p.etapa) inc(byEtapa, f.p.etapa);
-      if (on && e && fo) inc(byAto, f.p.ato || 'emissao');
-      if (on && e && at) inc(byFonte, f.p.fonte || 'AD');
+      const e = passEtapa(f), at = passAto(f), fo = passFonte(f), ca = passCat(f), on = S.on.has(f.c);
+      if (e && at && fo && ca) inc(byClass, f.c);
+      if (on && at && fo && ca && f.p.etapa) inc(byEtapa, f.p.etapa);
+      if (on && e && fo && ca) inc(byAto, f.p.ato || 'emissao');
+      if (on && e && at && ca) inc(byFonte, f.p.fonte || 'AD');
+      if (on && e && at && fo) for (const k of featCats(f.p)) inc(byCat, k);
     }
+    document.querySelectorAll('#cats .crow').forEach((row) => {
+      const k = row.dataset.k, n = byCat[k] || 0;
+      row.querySelector('.n').textContent = fmt(n);
+      row.querySelector('input').checked = S.cats.has(k);
+      row.classList.toggle('zero', n === 0);
+    });
+    document.querySelectorAll('#cats .cgrp').forEach((det) => {
+      const g = CAT_GROUPS.find((x) => x.key === det.dataset.g);
+      const on = g.itens.filter(([k]) => S.cats.has(k)).length;
+      const cb = det.querySelector('summary input');
+      cb.checked = on === g.itens.length; cb.indeterminate = on > 0 && on < g.itens.length;
+      det.querySelector('summary .n').textContent = fmt(g.itens.reduce((s, [k]) => s + (byCat[k] || 0), 0));
+    });
+    $('catsTotal').textContent = allCatsOn() ? 'todas' : `${S.cats.size} de ${ALL_CATS.length}`;
     document.querySelectorAll('#legend .row').forEach((row) => {
       const k = row.dataset.k, n = byClass[k] || 0;
       row.querySelector('.n').textContent = fmt(n);
@@ -495,7 +617,7 @@
 
     // ranking por distrito (ignora o filtro de distrito)
     const byD = {};
-    for (const f of feats) if (S.on.has(f.c) && passEtapa(f) && passAto(f) && passFonte(f) && f.p.distrito) byD[f.p.distrito] = (byD[f.p.distrito] || 0) + 1;
+    for (const f of feats) if (S.on.has(f.c) && passEtapa(f) && passAto(f) && passFonte(f) && passCat(f) && f.p.distrito) byD[f.p.distrito] = (byD[f.p.distrito] || 0) + 1;
     const top = Object.entries(byD).sort((a, b) => b[1] - a[1]).slice(0, 10);
     const max = top.length ? top[0][1] : 1;
     const rank = $('rank'); rank.innerHTML = '';
@@ -634,6 +756,8 @@
         if (on.length === list.length) continue;
         for (const l of wrap(ctx, `${nome}: ${on.join(', ') || 'nenhum'}`, P.w)) { ctx.fillText(l, P.x, y); y += 1.8 * pu; }
       }
+      const cr = catsResumo();
+      if (cr) for (const l of wrap(ctx, `Categoria de uso: ${cr}`, P.w)) { ctx.fillText(l, P.x, y); y += 1.8 * pu; }
       y += 1.6 * pu;
 
       // legenda (só classes ligadas; mesma lista em todos os anos da série)
@@ -873,7 +997,7 @@
 
   function exportCSV() {
     const feats = (S.data[S.ano] || []).filter(isVisible);
-    const cols = ['id', 'ano', 'data', 'sistema', 'alvara', 'processo', 'sei', 'descricao', 'grupo', 'classe', 'ato', 'etapa', 'sqls', 'endereco', 'categoria', 'uso', 'area', 'bpu', 'uso_iptu', 'distrito', 'subprefeitura', 'regiao', 'precisao', 'lat', 'lon'];
+    const cols = ['id', 'ano', 'data', 'sistema', 'alvara', 'processo', 'sei', 'descricao', 'grupo', 'classe', 'ato', 'etapa', 'sqls', 'endereco', 'categoria', 'cat_codigos', 'cat_descricao', 'uso', 'area', 'bpu', 'uso_iptu', 'distrito', 'subprefeitura', 'regiao', 'precisao', 'lat', 'lon'];
     const q = (v) => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const lines = [cols.join(';')];
     for (const f of feats) {
@@ -881,6 +1005,7 @@
       const row = {
         ...p, sistema: FONTE_CURTO[p.fonte || 'AD'], grupo: c.group, classe: c.label, ato: ATO_LBL[p.ato || 'emissao'], etapa: ETAPA_LBL[p.etapa] || '',
         uso: USO_LBL[p.uso] || '', area: p.area ? String(p.area).replace('.', ',') : '',
+        cat_codigos: (p.cats || []).join('; '), cat_descricao: (p.cats || []).map((k) => CAT_LBL[k]).join('; '),
         lat: String(f.lat).replace('.', ','), lon: String(f.lon).replace('.', ','),
       };
       lines.push(cols.map((k) => q(row[k])).join(';'));
@@ -902,7 +1027,7 @@
     window.mapaAlvaras = { map, S, renderPNG }; // para depuração no console
     for (const f of distritos.features) S.distritoIndex[f.properties.nome] = f;
 
-    buildYears(); buildLegend(); buildEtapas(); buildDistritos();
+    buildYears(); buildLegend(); buildEtapas(); buildCats(); buildDistritos();
     setBasemap(S.basemap);
     // se o mapa nasce com tamanho 0 (aba oculta, painel recolhido), enquadra quando ganhar tamanho
     let fitted = false;
