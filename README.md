@@ -24,11 +24,12 @@ porque falta uma das fontes (o site avisa).
 
 ## Legenda
 
-A **forma** indica o tipo de alvará; a **cor** separa HIS/HMP de exceto HIS/HMP dentro de cada tipo:
+A **forma** indica o tipo de alvará. Na **edificação nova**, a **cor** mostra HIS/HMP ou a categoria de uso;
+no projeto modificativo e na reforma, separa HIS/HMP de exceto HIS/HMP:
 
 | Forma | Tipo | Cores |
 |---|---|---|
-| ● círculo | Edificação nova | azul = exceto HIS/HMP · laranja = HIS/HMP · verde = processo declaratório (Aprova Digital) |
+| ● círculo | Edificação nova | laranja = HIS/HMP · azul-claro = **R1** residência unifamiliar · verde-petróleo = **R2h** conjunto horizontal · azul = **R2v** conjunto vertical (prédio) · lavanda = **R2/R3** residencial multifamiliar (lei antiga) · metade azul/metade vermelho = **R + NR** uso misto · vermelho = **NR** não residencial · cinza-azulado = uso não informado (Aprova Digital) · verde-água = processo declaratório |
 | ◆ losango | Projeto modificativo | lilás = exceto HIS/HMP · roxo = HIS/HMP |
 | ■ quadrado | Reforma (inclui reconstrução) | mostarda = exceto HIS/HMP · marrom = HIS/HMP |
 | ▲ triângulo | Demolição | preto |
@@ -39,7 +40,9 @@ A **forma** indica o tipo de alvará; a **cor** separa HIS/HMP de exceto HIS/HMP
 
 Nos **processos SEHAB/SMUL**, HIS/HMP vem da descrição ou da **categoria de uso** (HIS, HMP, EHIS, EHMP, EZEIS)
 ou do tipo de construção “habitação de interesse social”. No **Aprova Digital** vem só da descrição, e
-“exceto HIS/HMP” **não** separa residencial de comercial (o Aprova Digital não informa o uso).
+como ele não informa a categoria de uso, a edificação nova exceto HIS/HMP fica como “uso não informado”.
+Quando um alvará tem categorias residenciais e não residenciais ao mesmo tempo, entra em **R + NR (uso misto)**.
+As cores da edificação nova foram conferidas para daltonismo e visão normal (todos os pares).
 
 ### Categoria de uso
 

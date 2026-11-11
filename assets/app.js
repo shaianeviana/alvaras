@@ -2,16 +2,25 @@
 'use strict';
 (() => {
   /* ============================================================ config */
-  // paleta conferida com o validador (todos os pares: daltonismo ΔE ≥ 8,7; visão normal ΔE ≥ 17,6)
+  // Paletas conferidas com o validador (todos os pares).
+  // Edificação nova (círculos): HIS + categorias de uso — daltonismo ΔE ≥ 8,3; visão normal ΔE ≥ 16,1.
+  // Modificativo e reforma: daltonismo ΔE ≥ 8,7; visão normal ΔE ≥ 17,6.
   const COLORS = {
-    mercado: '#2a78d6', his: '#eb6834', decl: '#1baf7a',
+    his: '#eb6834', decl: '#1baf7a',
+    r1: '#86b6ef', r2h: '#00695c', r2v: '#1565c0', rant: '#9575cd', nr: '#b71c1c', sem: '#7f8ea0',
     mod_mercado: '#c08ad8', mod_his: '#8e3a9e', ref_mercado: '#cfae00', ref_his: '#8a4b12',
     demol: '#2b2a27', regul: '#5f5e5a', cert: '#8a8984', outro: '#a9a8a3',
   };
-  // Forma = tipo de alvará · Cor = tipo e condição HIS/HMP (cinzas = atos que não são obra)
+  // Forma = tipo de alvará · Cor = categoria de uso (edificação nova) ou HIS/HMP × exceto (modificativo, reforma)
   const CLASSES = [
-    { key: 'nova_mercado', group: 'Edificação nova', label: 'Exceto HIS/HMP', color: 'mercado', shape: 'circle', social: 'mercado' },
     { key: 'nova_his', group: 'Edificação nova', label: 'HIS/HMP', color: 'his', shape: 'circle', social: 'his' },
+    { key: 'nova_r1', group: 'Edificação nova', code: 'R1', label: 'Residência unifamiliar (casa)', color: 'r1', shape: 'circle', social: 'mercado' },
+    { key: 'nova_r2h', group: 'Edificação nova', code: 'R2h', label: 'Conjunto residencial horizontal', color: 'r2h', shape: 'circle', social: 'mercado' },
+    { key: 'nova_r2v', group: 'Edificação nova', code: 'R2v', label: 'Conjunto residencial vertical (prédio)', color: 'r2v', shape: 'circle', social: 'mercado' },
+    { key: 'nova_rant', group: 'Edificação nova', code: 'R2/R3', label: 'Residencial multifamiliar (lei antiga)', color: 'rant', shape: 'circle', social: 'mercado' },
+    { key: 'nova_misto', group: 'Edificação nova', code: 'R + NR', label: 'Uso misto', colors: ['r2v', 'nr'], color: 'r2v', shape: 'split', social: 'mercado' },
+    { key: 'nova_nr', group: 'Edificação nova', code: 'NR', label: 'Não residencial (comércio, serviços, indústria)', color: 'nr', shape: 'circle', social: 'mercado' },
+    { key: 'nova_sem', group: 'Edificação nova', label: 'Uso não informado (Aprova Digital)', color: 'sem', shape: 'circle', social: 'mercado' },
     { key: 'nova_declaratorio', group: 'Edificação nova', label: 'Processo declaratório', color: 'decl', shape: 'circle' },
     { key: 'modificativo_mercado', group: 'Projeto modificativo', label: 'Exceto HIS/HMP', color: 'mod_mercado', shape: 'diamond', social: 'mercado' },
     { key: 'modificativo_his', group: 'Projeto modificativo', label: 'HIS/HMP', color: 'mod_his', shape: 'diamond', social: 'his' },
@@ -26,7 +35,11 @@
   const CLS = Object.fromEntries(CLASSES.map((c) => [c.key, c]));
   // ordem de desenho: atos "cinzas" embaixo, edificação nova no meio, os demais tipos por cima
   const BOTTOM = ['outro', 'certificado', 'parcelamento', 'regularizacao'];
-  const DRAW_ORDER = Object.fromEntries(CLASSES.map((c, i) => [c.key, BOTTOM.includes(c.key) ? BOTTOM.indexOf(c.key) : c.group === 'Edificação nova' ? 10 : 20 + i]));
+  // dentro de edificação nova, os mais raros por cima
+  const NOVA_ORDER = ['nova_sem', 'nova_rant', 'nova_nr', 'nova_r2v', 'nova_his', 'nova_misto', 'nova_r2h', 'nova_declaratorio', 'nova_r1'];
+  const DRAW_ORDER = Object.fromEntries(CLASSES.map((c, i) => [c.key,
+    BOTTOM.includes(c.key) ? BOTTOM.indexOf(c.key) : NOVA_ORDER.includes(c.key) ? 10 + NOVA_ORDER.indexOf(c.key) : 30 + i]));
+  const clsText = (c) => (c.code ? `${c.code} — ${c.label}` : c.label);
   const ETAPAS = [['aprovacao', 'Aprovação'], ['execucao', 'Execução'], ['aprovacao_execucao', 'Aprovação e execução']];
   const ETAPA_LBL = Object.fromEntries(ETAPAS);
   const ATOS = [['emissao', 'Emissão'], ['reconsideracao', 'Reconsideração de despacho'], ['apostilamento', 'Apostilamento'], ['revalidacao', 'Revalidação ou renovação']];
@@ -156,6 +169,15 @@
     else ctx.arc(x, y, r, 0, Math.PI * 2);
   }
   function drawSym(ctx, c, x, y, r, ring) {
+    if (c.shape === 'split') { // uso misto: metade residencial, metade não residencial
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.lineWidth = ring * 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r, Math.PI / 2, Math.PI * 1.5); ctx.closePath();
+      ctx.fillStyle = COLORS[c.colors[0]]; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r, -Math.PI / 2, Math.PI / 2); ctx.closePath();
+      ctx.fillStyle = COLORS[c.colors[1]]; ctx.fill();
+      return;
+    }
     pathSym(ctx, c.shape, x, y, r);
     ctx.lineJoin = 'round';
     ctx.lineWidth = ring * 2;
@@ -259,7 +281,7 @@
     mapEl.style.cursor = h ? 'pointer' : '';
     if (!h) { tip.hidden = true; return; }
     const p = h.f.p, c = CLS[h.f.c];
-    tip.innerHTML = `<b>${esc(p.endereco || (p.sqls ? 'SQL ' + p.sqls.split(',')[0] : p.id))}</b><span>${esc(c.group)} · ${esc(c.label)} · ${fmtData(p.data)}</span>`;
+    tip.innerHTML = `<b>${esc(p.endereco || (p.sqls ? 'SQL ' + p.sqls.split(',')[0] : p.id))}</b><span>${esc(c.group)} · ${esc(clsText(c))} · ${fmtData(p.data)}</span>`;
     tip.hidden = false;
     const W = mapEl.clientWidth;
     const left = h.x + 14 + tip.offsetWidth > W ? h.x - 14 - tip.offsetWidth : h.x + 14;
@@ -301,7 +323,7 @@
         <dt>Ver no mapa</dt><dd><a href="https://www.google.com/maps?q=${f.lat},${f.lon}" target="_blank" rel="noopener">Google Maps</a></dd>
       </dl>`;
     const cls = card.querySelector('.cls');
-    cls.append(sym, document.createTextNode(`${c.group} · ${c.label}`));
+    cls.append(sym, document.createTextNode(`${c.group} · ${clsText(c)}`));
     card.querySelector('.x').onclick = () => { card.hidden = true; };
     card.hidden = false;
   }
@@ -413,7 +435,9 @@
         const row = document.createElement('label'); row.className = 'row'; row.dataset.k = c.key;
         const cb = document.createElement('input'); cb.type = 'checkbox'; cb.dataset.k = c.key;
         cb.onchange = () => { cb.checked ? S.on.add(c.key) : S.on.delete(c.key); refresh(); };
-        const lbl = document.createElement('span'); lbl.textContent = c.label;
+        const lbl = document.createElement('span');
+        if (c.code) { const b = document.createElement('b'); b.textContent = c.code + ' '; lbl.append(b); }
+        lbl.append(c.label);
         const n = document.createElement('span'); n.className = 'n';
         row.append(cb, symSVG(c, 16), lbl, n);
         box.appendChild(row);
@@ -636,7 +660,7 @@
     if (!a) return;
     const pct = (n) => (a.mapeados ? Math.round((100 * (n || 0)) / a.mapeados) : 0);
     const rows = CLASSES.filter((c) => a.classes_total[c.key]).map((c) =>
-      `<tr><td>${esc(c.group)} · ${esc(c.label)}</td><td class="r">${fmt(a.classes_total[c.key])}</td><td class="r">${fmt(a.classes[c.key] || 0)}</td></tr>`).join('');
+      `<tr><td>${esc(c.group)} · ${esc(clsText(c))}</td><td class="r">${fmt(a.classes_total[c.key])}</td><td class="r">${fmt(a.classes[c.key] || 0)}</td></tr>`).join('');
     const fontes = fontesDe(a).map((f) => `${f.fonte === 'PA' ? 'relatório anual de processos aprovados da SEHAB/SMUL' : 'relatório anual de alvarás do Aprova Digital (SMUL)'} — ${fmt(f.total)} registros, ${fmtData(f.data_inicial)} a ${fmtData(f.data_final)}`);
     const miss = fontesAusentes(a);
     const semLoc = a.sem_localizacao ?? (a.sem_sql || 0) + (a.sql_nao_encontrado || 0);
@@ -769,8 +793,12 @@
         blocks.push({ g, items: pres.filter((cl) => cl.group === g) });
       }
       const colW = P.cols === 2 ? (P.w - 3 * pu) / 2 : P.w;
-      const rowH = 2.5 * pu, grpH = 2.6 * pu, grpGap = 1.1 * pu;
-      const blockH = (b) => grpH + b.items.length * rowH + grpGap;
+      const rowH = 2.5 * pu, grpH = 2.6 * pu, grpGap = 1.1 * pu, lineH = 1.8 * pu;
+      const fReg = `400 ${1.5 * pu}px ${FONT}`, fBold = `700 ${1.5 * pu}px ${FONT}`;
+      ctx.font = fReg;
+      const avail = colW - 2.6 * pu - ctx.measureText('00.000').width - 1.0 * pu;
+      const linesOf = (cl) => { ctx.font = fReg; return wrap(ctx, clsText(cl), avail); };
+      const blockH = (b) => grpH + b.items.reduce((s2, cl) => s2 + rowH + (linesOf(cl).length - 1) * lineH, 0) + grpGap;
       let split = blocks.length;
       if (P.cols === 2) {
         const total = blocks.reduce((s2, b) => s2 + blockH(b), 0);
@@ -796,10 +824,20 @@
           y += rowH;
           const cy = y - 0.55 * pu;
           drawSym(ctx, cl, colX + 0.85 * pu, cy, 0.7 * pu, 0.06 * pu);
-          ctx.fillStyle = '#0b0b0b'; ctx.font = `400 ${1.5 * pu}px ${FONT}`; ctx.textAlign = 'left';
-          ctx.fillText(cl.label, colX + 2.6 * pu, y);
-          ctx.textAlign = 'right'; ctx.fillStyle = '#52514e';
+          // código em negrito + descrição; quebra em mais linhas se não couber
+          const lines = linesOf(cl);
+          lines.forEach((l, li) => {
+            const ly = y + li * lineH;
+            let x = colX + 2.6 * pu;
+            ctx.fillStyle = '#0b0b0b'; ctx.textAlign = 'left';
+            if (li === 0 && cl.code && l.startsWith(cl.code)) {
+              ctx.font = fBold; ctx.fillText(cl.code, x, ly); x += ctx.measureText(cl.code + ' ').width;
+              ctx.font = fReg; ctx.fillText(l.slice(cl.code.length).trim(), x, ly);
+            } else { ctx.font = fReg; ctx.fillText(l, x, ly); }
+          });
+          ctx.font = fReg; ctx.textAlign = 'right'; ctx.fillStyle = '#52514e';
           ctx.fillText(fmt(counts[cl.key] || 0), colX + colW, y);
+          y += (lines.length - 1) * lineH;
         }
         y += grpGap;
       });
@@ -813,7 +851,7 @@
       ctx.textAlign = 'left';
       y += 2.2 * pu;
       ctx.fillStyle = '#52514e'; ctx.font = `400 ${1.1 * pu}px ${FONT}`;
-      for (const l of wrap(ctx, 'Forma = tipo de alvará · cor = HIS/HMP ou exceto HIS/HMP em cada tipo. Cada símbolo é um alvará (o mesmo prédio pode ter alvará de aprovação, de execução, apostilamentos e reconsiderações).', P.w)) { ctx.fillText(l, P.x, y); y += 1.55 * pu; }
+      for (const l of wrap(ctx, 'Forma = tipo de alvará · cor = categoria de uso (edificação nova) ou HIS/HMP e exceto HIS/HMP (modificativo, reforma). Cada símbolo é um alvará (o mesmo prédio pode ter alvará de aprovação, de execução, apostilamentos e reconsiderações).', P.w)) { ctx.fillText(l, P.x, y); y += 1.55 * pu; }
 
       // fonte (ancorada embaixo)
       const nPrec = {};
@@ -1003,7 +1041,7 @@
     for (const f of feats) {
       const p = f.p, c = CLS[f.c];
       const row = {
-        ...p, sistema: FONTE_CURTO[p.fonte || 'AD'], grupo: c.group, classe: c.label, ato: ATO_LBL[p.ato || 'emissao'], etapa: ETAPA_LBL[p.etapa] || '',
+        ...p, sistema: FONTE_CURTO[p.fonte || 'AD'], grupo: c.group, classe: clsText(c), ato: ATO_LBL[p.ato || 'emissao'], etapa: ETAPA_LBL[p.etapa] || '',
         uso: USO_LBL[p.uso] || '', area: p.area ? String(p.area).replace('.', ',') : '',
         cat_codigos: (p.cats || []).join('; '), cat_descricao: (p.cats || []).map((k) => CAT_LBL[k]).join('; '),
         lat: String(f.lat).replace('.', ','), lon: String(f.lon).replace('.', ','),

@@ -138,7 +138,21 @@ function bbox(geom) {
 /* ------------------------------------------------------- classificação */
 const RE_HIS_CAT = /(^|[^A-Z])E?H\.?\s?I\.?\s?S([^A-Z]|$)|(^|[^A-Z])E?H\.?\s?M\.?\s?P([^A-Z]|$)|EZEIS|INTERESSE SOCIAL/;
 
-function classify(desc, fonte, cat = '', tipoC = '') {
+/* Edificação nova exceto HIS/HMP: subclasse pela categoria de uso (só processos SEHAB/SMUL). */
+const RES_CODES = new Set(['R1', 'R2h', 'R2v', 'R2', 'R3', 'R']);
+const isNR = (k) => /^(NR\d?|IND|INFRA|[CSI]\d?|E\d?)$/.test(k);
+function usoSub(cats) {
+  const R = cats.filter((k) => RES_CODES.has(k)), N = cats.filter(isNR);
+  if (R.length && N.length) return 'misto';
+  if (cats.includes('R2v')) return 'r2v';
+  if (cats.includes('R2h')) return 'r2h';
+  if (cats.includes('R1')) return 'r1';
+  if (R.length) return 'rant';
+  if (N.length) return 'nr';
+  return 'sem';
+}
+
+function classify(desc, fonte, cat = '', tipoC = '', cats = []) {
   // junta palavras quebradas pelo sistema: "EDI-FICACAO", "RE- FORMA", "EDIFICACAONOVA"
   const d = strip(desc).replace(/([a-z])-\s*([a-z])/g, '$1$2').replace(/\s+/g, ' ');
 
@@ -172,7 +186,7 @@ function classify(desc, fonte, cat = '', tipoC = '') {
   if (!['nova', 'modificativo', 'reforma', 'demolicao'].includes(tipo)) etapa = '';
 
   let classe;
-  if (tipo === 'nova') classe = social === 'declaratorio' ? 'nova_declaratorio' : social === 'his' ? 'nova_his' : 'nova_mercado';
+  if (tipo === 'nova') classe = social === 'declaratorio' ? 'nova_declaratorio' : social === 'his' ? 'nova_his' : 'nova_' + usoSub(cats);
   else if (tipo === 'modificativo') classe = social === 'his' ? 'modificativo_his' : 'modificativo_mercado';
   else if (tipo === 'reforma') classe = social === 'his' ? 'reforma_his' : 'reforma_mercado';
   else classe = tipo;
@@ -731,7 +745,7 @@ const listXls = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) =>
     const t = {};
     const inc = (k) => (t[k] = (t[k] || 0) + 1);
     for (const r of all) {
-      const c = classify(r.descricao, r.fonte, r.categoria, r.tipo_construcao);
+      const c = classify(r.descricao, r.fonte, r.categoria, r.tipo_construcao, r.fonte === 'PA' ? catCodes(r.categoria) : []);
       inc(`classe ${c.classe}`); inc(`ato ${c.ato}`); inc(`etapa ${c.etapa || '-'}`);
       inc(r.sqls.length ? 'com SQL' : r.incra ? 'INCRA' : 'sem SQL');
       if (!r.sqls.length && r.fonte === 'PA') inc(parseEndereco(r.endereco) ? 'sem SQL, endereço ok' : 'sem SQL, endereço ruim');
@@ -808,7 +822,8 @@ const listXls = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) =>
     const seq = { PA: 0, AD: 0 };
     for (const r of recs) {
       seq[r.fonte]++;
-      const cls = classify(r.descricao, r.fonte, r.categoria, r.tipo_construcao);
+      const cats = r.fonte === 'PA' ? catCodes(r.categoria).sort() : [];
+      const cls = classify(r.descricao, r.fonte, r.categoria, r.tipo_construcao, cats);
       st.classes_total[cls.classe] = (st.classes_total[cls.classe] || 0) + 1;
       if (r.data && r.data.startsWith(String(ano))) fst[r.fonte].datas.push(r.data);
       if (r.incra) st.incra++;
@@ -844,7 +859,6 @@ const listXls = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) =>
       fst[r.fonte].mapeados++;
       st.classes[cls.classe] = (st.classes[cls.classe] || 0) + 1;
       st.atos[cls.ato] = (st.atos[cls.ato] || 0) + 1;
-      const cats = r.fonte === 'PA' ? catCodes(r.categoria).sort() : [];
       const ck = `${cls.classe}|${cls.ato}|${cls.etapa}|${r.fonte}|${cats.join('+')}`;
       st.cubo[ck] = (st.cubo[ck] || 0) + 1;
 
